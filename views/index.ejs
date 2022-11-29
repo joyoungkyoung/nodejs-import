@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- jQuery -->
+    <script
+      type="text/javascript"
+      src="https://code.jquery.com/jquery-1.12.4.min.js"
+    ></script>
+    <!-- iamport.payment.js -->
+    <script
+      type="text/javascript"
+      src="https://cdn.iamport.kr/js/iamport.payment-1.2.0.js"
+    ></script>
+  </head>
+  <body>
+    <button onclick="requestPay()">결제 테스트</button>
+    <button onclick="cancelPay()">결제 환불테스트</button>
+    <input id="merchant_key" type="hidden" value="<%= merchant_key %>" />
+  </body>
+  <script>
+    const IMP = window.IMP;
+    IMP.init($("#merchant_key").val());
+    console.log(IMP);
+    function requestPay() {
+      IMP.request_pay(
+        {
+          pg: "kcp.{상점ID}",
+          pay_method: "card",
+          merchant_uid: "ORD20180131-0000010", //주문번호
+          name: "노르웨이 회전 의자",
+          amount: 100, // 숫자타입
+          buyer_email: "dughks1130@gmail.com",
+          buyer_name: "홍길동",
+          buyer_tel: "010-8908-9360",
+          buyer_addr: "서울특별시 강남구 신사동",
+          buyer_postcode: "01181",
+        },
+        function (rsp) {
+          if (rsp.success) {
+            console.log(rsp);
+            jQuery
+              .ajax({
+                url: "http://localhost:2008/api/v1/payments/complete",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                  imp_uid: rsp.imp_uid,
+                  merchant_uid: rsp.merchant_uid,
+                }),
+                dataType: "json",
+              })
+              .done(function (data) {
+                console.log(data);
+                // 응답 처리
+                switch (data.status) {
+                  case "vbankIssued":
+                    // 가상계좌 발급 시 로직
+                    break;
+                  case "success":
+                    // 결제 성공 시 로직
+                    break;
+                }
+              });
+          } else {
+            console.log(rsp);
+          }
+        }
+      );
+    }
+
+    function cancelPay() {
+      jQuery
+        .ajax({
+          url: "http://localhost:2008/api/v1/payments/cancel",
+          type: "POST",
+          contentType: "application/json",
+          data: JSON.stringify({
+            merchant_uid: "ORD20180131-0000010", // 예: ORD20180131-0000011
+            cancel_request_amount: 100, // 환불금액
+            reason: "테스트 결제 환불", // 환불사유
+            // refund_holder: "홍길동", // [가상계좌 환불시 필수입력] 환불 수령계좌 예금주
+            // refund_bank: "88", // [가상계좌 환불시 필수입력] 환불 수령계좌 은행코드(예: KG이니시스의 경우 신한은행은 88번)
+            // refund_account: "56211105948400", // [가상계좌 환불시 필수입력] 환불 수령계좌 번호
+          }),
+          dataType: "json",
+        })
+        .done(function (data) {
+          console.log(data);
+        })
+        .fail(function (e) {
+          console.log(e);
+        });
+    }
+  </script>
+</html>
